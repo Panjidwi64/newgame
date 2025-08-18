@@ -1,252 +1,142 @@
-<!doctype html>
-<html lang="id">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>EthOS — Billboard City</title>
+  <meta charset="UTF-8" />
+  <title>3D Cinema POV</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    html,body{margin:0;height:100%;background:#0b0f1a;overflow:hidden;font-family:system-ui,Segoe UI,Arial}
-    #ui{
-      position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-      background:linear-gradient(180deg,#0b0f1af2 0%,#0b0f1aee 100%);
-      color:#cfe9ff;text-align:center;z-index:9
-    }
-    #ui .panel{
-      padding:20px 24px;border-radius:16px;border:1px solid #2b3a55;background:#0f1729a6;
-      box-shadow:0 10px 30px #0008;backdrop-filter:blur(6px)
-    }
-    button{
-      padding:10px 16px;border-radius:10px;border:1px solid #456;cursor:pointer;
-      background:#1a2844;color:#e7f3ff;font-weight:600
-    }
-    #hint{position:fixed;left:12px;bottom:10px;color:#a6c7ff;background:#0d1528aa;padding:6px 10px;border:1px solid #274;border-radius:8px;font-size:12px}
+    html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:system-ui,Arial}
+    #hint{position:fixed;left:12px;bottom:10px;color:#aaa;font-size:12px;opacity:.8}
   </style>
 </head>
 <body>
-  <div id="ui">
-    <div class="panel">
-      <h2 style="margin:0 0 12px;font-weight:800;letter-spacing:.5px">EthOS — Billboard City</h2>
-      <p style="margin:0 0 14px">Klik tombol di bawah untuk masuk, mouse akan terkunci.<br/>Kontrol: <b>WASD</b> jalan, <b>Mouse</b> lihat, <b>Spasi</b> lompat, <b>Shift</b> lari.</p>
-      <button id="startBtn">Enter City</button>
-    </div>
-  </div>
-  <div id="hint">WASD, Space, Shift — ESC untuk keluar pointer</div>
+  <div id="hint">Gerakkan mouse untuk melihat sekeliling • Scroll = sedikit zoom</div>
 
-  <!-- Three.js (module) dari CDN -->
   <script type="module">
-    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-    import { PointerLockControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/PointerLockControls.js';
+    import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js";
 
-    // ---- Renderer, Scene, Camera
+    // --- scene / camera / renderer ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x050508);
+
+    const camera = new THREE.PerspectiveCamera(70, innerWidth/innerHeight, 0.1, 1000);
+    camera.position.set(0, 1.25, 6.5); // tinggi kira-kira posisi duduk, agak jauh dari layar
+
     const renderer = new THREE.WebGLRenderer({ antialias:true });
     renderer.setSize(innerWidth, innerHeight);
-    renderer.setPixelRatio(devicePixelRatio);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     document.body.appendChild(renderer.domElement);
 
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0b0f1a);
-    scene.fog = new THREE.Fog(0x0b0f1a, 20, 180);
-
-    const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 500);
-    camera.position.set(0, 1.7, 0);
-
-    const controls = new PointerLockControls(camera, renderer.domElement);
-
-    // ---- UI start
-    const ui = document.getElementById('ui');
-    document.getElementById('startBtn').addEventListener('click', async () => {
-      controls.lock();
-      ui.style.display = 'none';
-      // Mulai semua video jika browser blokir autoplay
-      for (const v of videoBank) {
-        try { await v.play(); } catch(e){}
-      }
-    });
-
-    // ---- Lampu city glow
-    const hemi = new THREE.HemisphereLight(0x6ab0ff, 0x0a0d18, 0.8);
-    scene.add(hemi);
-    const dir = new THREE.DirectionalLight(0x99ccff, 0.4);
-    dir.position.set(5, 8, 3);
-    scene.add(dir);
-
-    // ---- Jalan
-    const street = new THREE.Mesh(
-      new THREE.PlaneGeometry(8, 400),
-      new THREE.MeshStandardMaterial({ color:0x0e1222, roughness:0.9, metalness:0.1 })
+    // --- ruangan bioskop (kotak besar, terlihat sisi dalam) ---
+    const room = new THREE.Mesh(
+      new THREE.BoxGeometry(20, 10, 20),
+      new THREE.MeshStandardMaterial({ color:0x0c0f17, side:THREE.BackSide, roughness:1, metalness:0 })
     );
-    street.rotation.x = -Math.PI/2;
-    street.position.z = -150;
-    scene.add(street);
+    scene.add(room);
 
-    // Marka jalan
-    const laneMat = new THREE.MeshBasicMaterial({ color:0xffffff });
-    for (let i=0;i<40;i++){
-      const d = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.01,2), laneMat);
-      d.position.set(0, 0.011, -i*10);
-      scene.add(d);
+    // lantai karpet gelap
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(20, 20),
+      new THREE.MeshStandardMaterial({ color:0x111319, roughness:1 })
+    );
+    floor.rotation.x = -Math.PI/2;
+    floor.position.y = 0;
+    scene.add(floor);
+
+    // --- layar bioskop: video texture ---
+    const video = document.createElement('video');
+    video.src = "media/ad1.mp4"; // ganti dengan video promomu
+    video.loop = true; video.muted = true; video.autoplay = true; video.playsInline = true;
+    video.play();
+
+    const videoTex = new THREE.VideoTexture(video);
+    videoTex.colorSpace = THREE.SRGBColorSpace;
+
+    // ukuran layar 16:9
+    const screenW = 8.0, screenH = screenW * 9/16;
+    const screen = new THREE.Mesh(
+      new THREE.PlaneGeometry(screenW, screenH),
+      new THREE.MeshBasicMaterial({ map: videoTex })
+    );
+    screen.position.set(0, 2.8, -8.9); // dinding depan (z negatif)
+    scene.add(screen);
+
+    // bingkai & glow sederhana (emissive bar di tepi)
+    const frameGeo = new THREE.PlaneGeometry(screenW+0.2, screenH+0.2);
+    const frame = new THREE.Mesh(
+      frameGeo,
+      new THREE.MeshBasicMaterial({ color:0x090b10 })
+    );
+    frame.position.copy(screen.position);
+    frame.position.z -= 0.01;
+    scene.add(frame);
+
+    // lampu ambient lembut + spotlight dari proyektor
+    scene.add(new THREE.AmbientLight(0x404040, 0.7));
+    const projector = new THREE.SpotLight(0xffffff, 1.1, 0, Math.PI/7, 0.25, 1.5);
+    projector.position.set(0, 3.2, 6.2);
+    projector.target = screen;
+    projector.castShadow = false;
+    scene.add(projector);
+
+    // kursi penonton siluet (beberapa deret depan kamera)
+    const audience = new THREE.Group();
+    const headMat = new THREE.MeshBasicMaterial({ color:0x000000 });
+    for (let i=0;i<12;i++){
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 12), headMat);
+      const row = i<6 ? 0 : 1;
+      const col = (i%6) - 2.5;
+      head.position.set(col*0.6, 1.05 + (Math.random()*0.04), 5.2 - row*0.6);
+      audience.add(head);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.5, 12), headMat);
+      body.position.set(head.position.x, 0.75, head.position.z);
+      audience.add(body);
     }
+    scene.add(audience);
 
-    // ---- Gedung kiri/kanan
-    const buildingMat1 = new THREE.MeshStandardMaterial({ color:0x1a2340, roughness:0.8, metalness:0.2 });
-    const buildingMat2 = new THREE.MeshStandardMaterial({ color:0x131a33, roughness:0.9, metalness:0.1 });
-    function addBuilding(x, z, w=6, h=THREE.MathUtils.randFloat(8,14), d=THREE.MathUtils.randFloat(6,10)) {
-      const mat = Math.random()>0.5?buildingMat1:buildingMat2;
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat);
-      m.position.set(x, h/2, z);
-      scene.add(m);
-      return m;
+    // --- kontrol pandangan pakai mouse (tanpa pointer lock) ---
+    let targetYaw = 0, targetPitch = 0;   // dalam radian
+    let yaw = 0, pitch = 0;               // nilai yang diinterpolasi agar halus
+    const maxYaw = THREE.MathUtils.degToRad(12);
+    const maxPitch = THREE.MathUtils.degToRad(8);
+
+    function onMouseMove(e){
+      const nx = (e.clientX / innerWidth) * 2 - 1;   // -1..1
+      const ny = (e.clientY / innerHeight) * 2 - 1;
+      targetYaw = nx * maxYaw;
+      targetPitch = -ny * maxPitch;
     }
-    for (let i=0;i<40;i++){
-      const z = -i*10 - 10;
-      addBuilding(-10, z);
-      addBuilding( 10, z);
-    }
+    addEventListener('mousemove', onMouseMove);
 
-    // ---- Bank video & helper billboard
-    const videoBank = [];
-    function makeVideo(src){
-      const v = document.createElement('video');
-      v.src = src;
-      v.muted = true; v.loop = true; v.autoplay = true; v.playsInline = true;
-      v.preload = 'auto';
-      // Mulai sedini mungkin
-      v.play().catch(()=>{ /* akan dipicu saat klik start */ });
-      videoBank.push(v);
-      return v;
-    }
-    function addBillboard({x=0,y=3,z=0,rotY=0,width=5,height=3,videoSrc,fallbackImage}){
-      let map;
-      if (videoSrc){
-        const v = makeVideo(videoSrc);
-        const vt = new THREE.VideoTexture(v);
-        vt.minFilter = THREE.LinearFilter;
-        vt.magFilter = THREE.LinearFilter;
-        vt.wrapS = vt.wrapT = THREE.ClampToEdgeWrapping;
-        map = vt;
-      } else if (fallbackImage){
-        map = new THREE.TextureLoader().load(fallbackImage);
-      }
-      const frame = new THREE.Mesh(
-        new THREE.PlaneGeometry(width+0.2, height+0.2),
-        new THREE.MeshBasicMaterial({ color:0x162347 })
-      );
-      const screen = new THREE.Mesh(
-        new THREE.PlaneGeometry(width, height),
-        new THREE.MeshBasicMaterial({ map, toneMapped:false })
-      );
-      const group = new THREE.Group();
-      frame.position.set(0,0,0); screen.position.set(0,0,0.01);
-      group.add(frame, screen);
-      group.position.set(x,y,z);
-      group.rotation.y = rotY;
-      // Tiang
-      const post = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.07,0.07,y, 8),
-        new THREE.MeshStandardMaterial({ color:0x20325e, metalness:0.8, roughness:0.2 })
-      );
-      post.position.set(x, y/2, z-0.01);
-      scene.add(post);
-      scene.add(group);
+    // zoom ringan via scroll (tidak mengubah posisi kursi)
+    addEventListener('wheel', (e)=>{
+      camera.fov = THREE.MathUtils.clamp(camera.fov + (e.deltaY > 0 ? 2 : -2), 50, 85);
+      camera.updateProjectionMatrix();
+    }, {passive:true});
 
-      // Cahaya neon di sekitar billboard
-      const glow = new THREE.PointLight(0x66aaff, 0.8, 18, 1.6);
-      glow.position.set(x, y, z);
-      scene.add(glow);
-    }
-
-    // ---- Tambahkan banyak videotron sepanjang jalan
-    const ads = [
-      // Ganti URL video berikut dengan punyamu (mp4/ webm). Simpan di server yang sama agar lancar.
-      'media/ad1.mp4', 'media/ad2.mp4', 'media/ad3.mp4', 'media/ad4.mp4',
-      'media/ad5.mp4', 'media/ad6.mp4', 'media/ad7.mp4', 'media/ad8.mp4'
-    ];
-    function pick(i){ return ads[i % ads.length]; }
-
-    let idx = 0;
-    for (let i=0;i<18;i++){
-      const z = -i*20 - 20;
-      addBillboard({ x:-6.2, y:3.2, z, rotY: Math.PI/2,  width:6, height:3.4, videoSrc: pick(idx++) });
-      addBillboard({ x: 6.2, y:3.2, z, rotY:-Math.PI/2,  width:6, height:3.4, videoSrc: pick(idx++) });
-      // Variasi kecil di posisi berikutnya
-      addBillboard({ x:-6.2, y:5.0, z: z-10, rotY: Math.PI/2, width:4, height:2.2, videoSrc: pick(idx++) });
-      addBillboard({ x: 6.2, y:5.0, z: z-10, rotY:-Math.PI/2, width:4, height:2.2, videoSrc: pick(idx++) });
-    }
-
-    // ---- Ground collision (simple)
-    const floorY = 0;
-
-    // ---- Movement
-    const velocity = new THREE.Vector3();
-    const direction = new THREE.Vector3();
-    let moveForward=false, moveBackward=false, moveLeft=false, moveRight=false, canJump=false;
-    let sprint=false;
-
-    const onKeyDown = (e)=>{
-      switch(e.code){
-        case 'ArrowUp':
-        case 'KeyW': moveForward=true; break;
-        case 'ArrowLeft':
-        case 'KeyA': moveLeft=true; break;
-        case 'ArrowDown':
-        case 'KeyS': moveBackward=true; break;
-        case 'ArrowRight':
-        case 'KeyD': moveRight=true; break;
-        case 'Space': if (canJump){ velocity.y += 3.5; canJump=false; } break;
-        case 'ShiftLeft': case 'ShiftRight': sprint=true; break;
-      }
-    };
-    const onKeyUp = (e)=>{
-      switch(e.code){
-        case 'ArrowUp':
-        case 'KeyW': moveForward=false; break;
-        case 'ArrowLeft':
-        case 'KeyA': moveLeft=false; break;
-        case 'ArrowDown':
-        case 'KeyS': moveBackward=false; break;
-        case 'ArrowRight':
-        case 'KeyD': moveRight=false; break;
-        case 'ShiftLeft': case 'ShiftRight': sprint=false; break;
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    document.addEventListener('keyup', onKeyUp);
-
-    // ---- Animate
+    // --- render loop ---
     const clock = new THREE.Clock();
     function animate(){
       requestAnimationFrame(animate);
+      const dt = clock.getDelta();
 
-      const delta = Math.min(0.05, clock.getDelta());
+      // smoothing (lerp)
+      const lerp = (a,b,t)=>a+(b-a)*t;
+      yaw   = lerp(yaw,   targetYaw,   6*dt);
+      pitch = lerp(pitch, targetPitch, 6*dt);
 
-      // Gerak FPS
-      velocity.x -= velocity.x * 8 * delta;
-      velocity.z -= velocity.z * 8 * delta;
-      velocity.y -= 9.8 * delta; // gravitasi
-
-      direction.z = Number(moveForward) - Number(moveBackward);
-      direction.x = Number(moveRight) - Number(moveLeft);
-      direction.normalize();
-
-      const speed = (sprint? 16 : 8);
-      if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
-      if (moveLeft || moveRight)       velocity.x -= direction.x * speed * delta;
-
-      controls.moveRight(-velocity.x * delta);
-      controls.moveForward(-velocity.z * delta);
-
-      camera.position.y += velocity.y * delta;
-      if (camera.position.y < 1.7){
-        velocity.y = 0;
-        camera.position.y = 1.7;
-        canJump = true;
-      }
+      // set rotasi kamera terhadap titik fokus layar
+      const focus = new THREE.Vector3(0, 2.6, -8.9); // kira2 pusat layar
+      camera.lookAt(focus);
+      camera.rotation.order = 'YXZ';
+      camera.rotation.y += yaw;
+      camera.rotation.x += pitch;
 
       renderer.render(scene, camera);
     }
     animate();
 
-    // Resize
+    // resize
     addEventListener('resize', ()=>{
       camera.aspect = innerWidth/innerHeight;
       camera.updateProjectionMatrix();
