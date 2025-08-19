@@ -41,61 +41,30 @@
     floor.rotation.x = -Math.PI/2;
     scene.add(floor);
 
+    // --- layar besar ---
+    const video = document.createElement('video');
+    video.src = "media/ad1.mp4";
+    video.loop = true; video.muted = true; video.autoplay = true; video.playsInline = true;
+    video.play();
 
-        // --- layar besar ---
-const video = document.createElement('video');
-video.src = "media/ad1.mp4";
-video.loop = true; 
-video.muted = true; 
-video.autoplay = true; 
-video.playsInline = true;
-video.play();
+    const videoTex = new THREE.VideoTexture(video);
+    videoTex.colorSpace = THREE.SRGBColorSpace;
 
-const videoTex = new THREE.VideoTexture(video);
-videoTex.colorSpace = THREE.SRGBColorSpace;
+    const screenW = 12, screenH = screenW * 32/16; // lebih besar
+    const screen = new THREE.Mesh(
+      new THREE.PlaneGeometry(screenW, screenH),
+      new THREE.MeshBasicMaterial({ map: videoTex })
+    );
+    screen.position.set(0, 10, -11.8);
+    scene.add(screen);
 
-// Default screen (sementara, 16:9)
-let screenW = 12;
-let screenH = screenW * (9/16);
-
-const screen = new THREE.Mesh(
-  new THREE.PlaneGeometry(screenW, screenH),
-  new THREE.MeshBasicMaterial({ map: videoTex })
-);
-screen.position.set(0, 5 + screenH/2, -11.8);
-scene.add(screen);
-
-// Frame layar
-const frame = new THREE.Mesh(
-  new THREE.PlaneGeometry(screenW+0.3, screenH+0.3),
-  new THREE.MeshBasicMaterial({ color:0x0f1015 })
-);
-frame.position.copy(screen.position);
-frame.position.z -= 0.01;
-scene.add(frame);
-
-// Setelah metadata siap, update ukuran sesuai rasio asli video
-video.addEventListener("loadedmetadata", () => {
-  const aspect = video.videoWidth / video.videoHeight;
-  
-  screenH = screenW * (1 / aspect); // sama dengan screenW * (video.videoHeight / video.videoWidth)
-
-  // update layar
-  screen.geometry.dispose();
-  screen.geometry = new THREE.PlaneGeometry(screenW, screenH);
-  screen.position.set(0, 5 + screenH/2, -11.8);
-
-  // update frame
-  frame.geometry.dispose();
-  frame.geometry = new THREE.PlaneGeometry(screenW+0.3, screenH+0.3);
-  frame.position.copy(screen.position);
-  frame.position.z -= 0.01;
-});
-
-
-
-    
-
+    const frame = new THREE.Mesh(
+      new THREE.PlaneGeometry(screenW+0.3, screenH+0.3),
+      new THREE.MeshBasicMaterial({ color:0x0f1015 })
+    );
+    frame.position.copy(screen.position);
+    frame.position.z -= 0.01;
+    scene.add(frame);
 
     // --- pencahayaan ---
     scene.add(new THREE.AmbientLight(0xffffff, 0.45));
@@ -273,13 +242,3 @@ video.addEventListener("loadedmetadata", () => {
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
