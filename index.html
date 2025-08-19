@@ -12,9 +12,9 @@
 <body>
   <div id="hint">Click to enter, use WASD to move, mouse to look around</div>
 
-<script type="module">
-  import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js?module";
-  import { PointerLockControls } from "https://unpkg.com/three@0.160.0/examples/jsm/controls/PointerLockControls.js?module";
+  <script type="module">
+    import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js?module";
+    import { PointerLockControls } from "https://unpkg.com/three@0.160.0/examples/jsm/controls/PointerLockControls.js?module";
 
     // --- scene setup ---
     const scene = new THREE.Scene();
@@ -31,10 +31,7 @@
     // --- PointerLockControls ---
     const controls = new PointerLockControls(camera, document.body);
     scene.add(controls.getObject());
-
-    document.body.addEventListener('click', () => {
-      controls.lock();
-    });
+    document.body.addEventListener('click', () => controls.lock());
 
     // --- movement flags (WASD) ---
     const move = { forward:false, backward:false, left:false, right:false };
@@ -133,12 +130,63 @@
       if (move.right) controls.moveRight(speed * dt);
     }
 
+    // --- Confetti 3D ---
+    const confettiGroup = new THREE.Group();
+    scene.add(confettiGroup);
+
+    const confettiColors = [0xff3b3b, 0x3bff65, 0x3b9bff, 0xfff63b, 0xff3be3];
+
+    function createConfettiPiece() {
+      const size = Math.random() * 0.2 + 0.05;
+      const geometry = new THREE.PlaneGeometry(size, size*1.5);
+      const material = new THREE.MeshBasicMaterial({ 
+        color: confettiColors[Math.floor(Math.random()*confettiColors.length)], 
+        side: THREE.DoubleSide 
+      });
+      const piece = new THREE.Mesh(geometry, material);
+      piece.position.set(
+        (Math.random() - 0.5) * 20,
+        6 + Math.random() * 5,
+        (Math.random() - 0.5) * 20
+      );
+      piece.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+      piece.userData = {
+        velocityY: Math.random() * -0.02 - 0.01,
+        rotationSpeed: new THREE.Vector3(
+          (Math.random()-0.5)*0.02,
+          (Math.random()-0.5)*0.02,
+          (Math.random()-0.5)*0.02
+        )
+      };
+      return piece;
+    }
+
+    const confettiCount = 150;
+    for (let i=0; i<confettiCount; i++){
+      confettiGroup.add(createConfettiPiece());
+    }
+
+    function updateConfetti() {
+      confettiGroup.children.forEach(piece => {
+        piece.position.y += piece.userData.velocityY;
+        piece.rotation.x += piece.userData.rotationSpeed.x;
+        piece.rotation.y += piece.userData.rotationSpeed.y;
+        piece.rotation.z += piece.userData.rotationSpeed.z;
+        if (piece.position.y < 0.1) {
+          piece.position.y = 6 + Math.random() * 5;
+          piece.position.x = (Math.random() - 0.5) * 20;
+          piece.position.z = (Math.random() - 0.5) * 20;
+        }
+      });
+    }
+
     // --- animation loop ---
     const clock = new THREE.Clock();
     function animate(){
       requestAnimationFrame(animate);
       const dt = clock.getDelta();
       updateMovement(dt);
+      updateConfetti();
       renderer.render(scene,camera);
     }
     animate();
@@ -218,23 +266,19 @@
 
         if (opacity <= 0) {
           clearInterval(fadeOut);
-
           currentBannerIndex = (currentBannerIndex + 1) % bannerImages.length;
           const newTexture = textureLoader.load(bannerImages[currentBannerIndex]);
           banners.forEach(banner => {
             banner.material.map = newTexture;
             banner.material.needsUpdate = true;
           });
-
           let opacityIn = 0;
           const fadeIn = setInterval(() => {
             opacityIn += 0.05;
             banners.forEach(banner => {
               banner.material.opacity = Math.min(1, opacityIn);
             });
-            if (opacityIn >= 1) {
-              clearInterval(fadeIn);
-            }
+            if (opacityIn >= 1) clearInterval(fadeIn);
           }, 50);
         }
       }, 50);
