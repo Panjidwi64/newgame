@@ -42,29 +42,43 @@
     scene.add(floor);
 
     // --- layar besar ---
-    const video = document.createElement('video');
-    video.src = "media/ad1.mp4";
-    video.loop = true; video.muted = true; video.autoplay = true; video.playsInline = true;
-    video.play();
 
-    const videoTex = new THREE.VideoTexture(video);
-    videoTex.colorSpace = THREE.SRGBColorSpace;
+    // --- layar besar ---
+const video = document.createElement('video');
+video.src = "media/ad1.mp4";
+video.loop = true; 
+video.muted = true; 
+video.autoplay = true; 
+video.playsInline = true;
+video.play();
 
-    const screenW = 12, screenH = screenW * 32/16; // lebih besar
-    const screen = new THREE.Mesh(
-      new THREE.PlaneGeometry(screenW, screenH),
-      new THREE.MeshBasicMaterial({ map: videoTex })
-    );
-    screen.position.set(0, 10, -11.8);
-    scene.add(screen);
+const videoTex = new THREE.VideoTexture(video);
+videoTex.colorSpace = THREE.SRGBColorSpace;
 
-    const frame = new THREE.Mesh(
-      new THREE.PlaneGeometry(screenW+0.3, screenH+0.3),
-      new THREE.MeshBasicMaterial({ color:0x0f1015 })
-    );
-    frame.position.copy(screen.position);
-    frame.position.z -= 0.01;
-    scene.add(frame);
+// Tunggu metadata video agar tahu rasio asli
+video.addEventListener("loadedmetadata", () => {
+  const aspect = video.videoWidth / video.videoHeight;
+
+  const screenW = 12; // lebar tetap
+  const screenH = screenW / aspect; // tinggi otomatis sesuai rasio video
+
+  const screen = new THREE.Mesh(
+    new THREE.PlaneGeometry(screenW, screenH),
+    new THREE.MeshBasicMaterial({ map: videoTex })
+  );
+  screen.position.set(0, 5 + screenH/2, -11.8); // posisi layar biar tidak "tenggelam"
+  scene.add(screen);
+
+  // frame layar
+  const frame = new THREE.Mesh(
+    new THREE.PlaneGeometry(screenW+0.3, screenH+0.3),
+    new THREE.MeshBasicMaterial({ color:0x0f1015 })
+  );
+  frame.position.copy(screen.position);
+  frame.position.z -= 0.01;
+  scene.add(frame);
+});
+
 
     // --- pencahayaan ---
     scene.add(new THREE.AmbientLight(0xffffff, 0.45));
@@ -242,6 +256,7 @@
   </script>
 </body>
 </html>
+
 
 
 
