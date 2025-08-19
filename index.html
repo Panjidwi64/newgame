@@ -51,7 +51,7 @@
     const videoTex = new THREE.VideoTexture(video);
     videoTex.colorSpace = THREE.SRGBColorSpace;
 
-    const screenW = 12, screenH = screenW * 32/16; // lebih besar
+    const screenW = 12, screenH = screenW * 16/9; // lebih besar
     const screen = new THREE.Mesh(
       new THREE.PlaneGeometry(screenW, screenH),
       new THREE.MeshBasicMaterial({ map: videoTex })
@@ -244,6 +244,7 @@
   </script>
 </body>
 </html>
+
 
 
 
