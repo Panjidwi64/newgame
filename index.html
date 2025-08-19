@@ -10,11 +10,13 @@
   </style>
 </head>
 <body>
-  <div id="hint">Look around you</div>
+  <div id="hint">Click to enter, use WASD to move, mouse to look around</div>
 
-  <script type="module">
-    import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js";
+<script type="module">
+  import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js?module";
+  import { PointerLockControls } from "https://unpkg.com/three@0.160.0/examples/jsm/controls/PointerLockControls.js?module";
 
+    // --- scene setup ---
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x080a12);
 
@@ -26,14 +28,36 @@
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     document.body.appendChild(renderer.domElement);
 
-    // --- ruangan ---
+    // --- PointerLockControls ---
+    const controls = new PointerLockControls(camera, document.body);
+    scene.add(controls.getObject());
+
+    document.body.addEventListener('click', () => {
+      controls.lock();
+    });
+
+    // --- movement flags (WASD) ---
+    const move = { forward:false, backward:false, left:false, right:false };
+    addEventListener('keydown',(e)=>{
+      if(e.code==="KeyW") move.forward = true;
+      if(e.code==="KeyS") move.backward = true;
+      if(e.code==="KeyA") move.left = true;
+      if(e.code==="KeyD") move.right = true;
+    });
+    addEventListener('keyup',(e)=>{
+      if(e.code==="KeyW") move.forward = false;
+      if(e.code==="KeyS") move.backward = false;
+      if(e.code==="KeyA") move.left = false;
+      if(e.code==="KeyD") move.right = false;
+    });
+
+    // --- room ---
     const room = new THREE.Mesh(
       new THREE.BoxGeometry(24, 12, 24),
       new THREE.MeshStandardMaterial({ color:0x1a1d27, side:THREE.BackSide, roughness:0.9 })
     );
     scene.add(room);
 
-    // lantai
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(24, 24),
       new THREE.MeshStandardMaterial({ color:0x20242f, roughness:0.8 })
@@ -41,7 +65,7 @@
     floor.rotation.x = -Math.PI/2;
     scene.add(floor);
 
-    // --- layar besar ---
+    // --- screen ---
     const video = document.createElement('video');
     video.src = "media/ad1.mp4";
     video.loop = true; video.muted = true; video.autoplay = true; video.playsInline = true;
@@ -50,7 +74,7 @@
     const videoTex = new THREE.VideoTexture(video);
     videoTex.colorSpace = THREE.SRGBColorSpace;
 
-    const screenW = 12, screenH = screenW * 8/16; // lebih besar
+    const screenW = 12, screenH = screenW * 8/16;
     const screen = new THREE.Mesh(
       new THREE.PlaneGeometry(screenW, screenH),
       new THREE.MeshBasicMaterial({ map: videoTex })
@@ -66,7 +90,7 @@
     frame.position.z -= 0.01;
     scene.add(frame);
 
-    // --- pencahayaan ---
+    // --- lighting ---
     scene.add(new THREE.AmbientLight(0xffffff, 0.45));
     const projector = new THREE.SpotLight(0xffffff, 1.2, 0, Math.PI/7, 0.25, 1.5);
     projector.position.set(0, 3.5, 7);
@@ -81,7 +105,7 @@
     wallLight2.position.set(10, 4, 0);
     scene.add(wallLight2);
 
-    // --- kursi penonton ---
+    // --- audience ---
     const audience = new THREE.Group();
     const matHead = new THREE.MeshStandardMaterial({ color:0x222831, roughness:0.6, metalness:0.2 });
     const matBody = new THREE.MeshStandardMaterial({ color:0x303844, roughness:0.7, metalness:0.2 });
@@ -100,34 +124,21 @@
     }
     scene.add(audience);
 
-    // --- kontrol pandangan ---
-    let targetYaw=0, targetPitch=0, yaw=0, pitch=0;
-    const maxYaw = THREE.MathUtils.degToRad(12);
-    const maxPitch = THREE.MathUtils.degToRad(8);
+    // --- movement update ---
+    function updateMovement(dt) {
+      const speed = 5.0;
+      if (move.forward) controls.moveForward(speed * dt);
+      if (move.backward) controls.moveForward(-speed * dt);
+      if (move.left) controls.moveRight(-speed * dt);
+      if (move.right) controls.moveRight(speed * dt);
+    }
 
-    addEventListener('mousemove',(e)=>{
-      const nx = (e.clientX/innerWidth)*2-1;
-      const ny = (e.clientY/innerHeight)*2-1;
-      targetYaw = nx*maxYaw;
-      targetPitch = -ny*maxPitch;
-    });
-
-    addEventListener('wheel',(e)=>{
-      camera.fov = THREE.MathUtils.clamp(camera.fov+(e.deltaY>0?2:-2),50,85);
-      camera.updateProjectionMatrix();
-    },{passive:true});
-
+    // --- animation loop ---
     const clock = new THREE.Clock();
     function animate(){
       requestAnimationFrame(animate);
       const dt = clock.getDelta();
-      yaw += (targetYaw-yaw)*5*dt;
-      pitch += (targetPitch-pitch)*5*dt;
-      const focus = new THREE.Vector3(0,3, -11.8);
-      camera.lookAt(focus);
-      camera.rotation.order='YXZ';
-      camera.rotation.y+=yaw;
-      camera.rotation.x+=pitch;
+      updateMovement(dt);
       renderer.render(scene,camera);
     }
     animate();
@@ -157,7 +168,6 @@
       opacity: 1 
     });
 
-    // Banner besar
     const bannerGeometry = new THREE.PlaneGeometry(5, 2.5);
     const bannerLeft = new THREE.Mesh(bannerGeometry, bannerMaterial.clone());
     bannerLeft.position.set(-8, 3, -5); 
@@ -177,10 +187,8 @@
     scene.add(bannerBack);
     banners.push(bannerBack);
 
-    // Banner kecil
     for (let i = 0; i < 4; i++) {
       const smallBannerGeo = new THREE.PlaneGeometry(2, 1);
-
       const smallBannerLeft = new THREE.Mesh(
         smallBannerGeo,
         bannerMaterial.clone()
@@ -200,9 +208,7 @@
       banners.push(smallBannerRight);
     }
 
-    // Fungsi transisi
     function changeBanner() {
-      // Fade out
       let opacity = 1;
       const fadeOut = setInterval(() => {
         opacity -= 0.05;
@@ -213,7 +219,6 @@
         if (opacity <= 0) {
           clearInterval(fadeOut);
 
-          // Ganti gambar
           currentBannerIndex = (currentBannerIndex + 1) % bannerImages.length;
           const newTexture = textureLoader.load(bannerImages[currentBannerIndex]);
           banners.forEach(banner => {
@@ -221,7 +226,6 @@
             banner.material.needsUpdate = true;
           });
 
-          // Fade in
           let opacityIn = 0;
           const fadeIn = setInterval(() => {
             opacityIn += 0.05;
@@ -236,18 +240,8 @@
       }, 50);
     }
 
-    // Slideshow tiap 5 detik
     setInterval(changeBanner, 5000);
 
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
