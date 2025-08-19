@@ -50,12 +50,12 @@
     const videoTex = new THREE.VideoTexture(video);
     videoTex.colorSpace = THREE.SRGBColorSpace;
 
-    const screenW = 12, screenH = screenW * 9/16; // lebih besar
+    const screenW = 12, screenH = screenW * 32/16; // lebih besar
     const screen = new THREE.Mesh(
       new THREE.PlaneGeometry(screenW, screenH),
       new THREE.MeshBasicMaterial({ map: videoTex })
     );
-    screen.position.set(0, 3.5, -11.8);
+    screen.position.set(0, 10, -11.8);
     scene.add(screen);
 
     const frame = new THREE.Mesh(
@@ -73,7 +73,6 @@
     projector.target = screen;
     scene.add(projector);
 
-    // lampu dinding kiri/kanan
     const wallLight1 = new THREE.PointLight(0xffddaa, 0.6, 10);
     wallLight1.position.set(-10, 4, 0);
     scene.add(wallLight1);
@@ -82,7 +81,7 @@
     wallLight2.position.set(10, 4, 0);
     scene.add(wallLight2);
 
-    // --- kursi penonton lebih jelas ---
+    // --- kursi penonton ---
     const audience = new THREE.Group();
     const matHead = new THREE.MeshStandardMaterial({ color:0x222831, roughness:0.6, metalness:0.2 });
     const matBody = new THREE.MeshStandardMaterial({ color:0x303844, roughness:0.7, metalness:0.2 });
@@ -139,57 +138,107 @@
       renderer.setSize(innerWidth,innerHeight);
     });
 
+    // --- Banner Slideshow ---
+    const textureLoader = new THREE.TextureLoader();
+    const bannerImages = [
+      "logo.png",
+      "banner1.png",
+      "banner2.png",
+      "banner3.png"
+    ];
+    let currentBannerIndex = 0;
+    const banners = [];
 
-    // Loader untuk banner
-const textureLoader = new THREE.TextureLoader();
-const bannerTexture = textureLoader.load("logo.png"); // ganti dengan path gambar kamu
+    const bannerTexture = textureLoader.load(bannerImages[currentBannerIndex]);
+    const bannerMaterial = new THREE.MeshBasicMaterial({ 
+      map: bannerTexture, 
+      side: THREE.DoubleSide, 
+      transparent: true, 
+      opacity: 1 
+    });
 
-// Banner kiri
-const bannerGeometry = new THREE.PlaneGeometry(5, 2.5);
-const bannerMaterial = new THREE.MeshBasicMaterial({ map: bannerTexture, side: THREE.DoubleSide });
-const bannerLeft = new THREE.Mesh(bannerGeometry, bannerMaterial);
-bannerLeft.position.set(-8, 3, -5); 
-bannerLeft.rotation.y = Math.PI / 2;
-scene.add(bannerLeft);
+    // Banner besar
+    const bannerGeometry = new THREE.PlaneGeometry(5, 2.5);
+    const bannerLeft = new THREE.Mesh(bannerGeometry, bannerMaterial.clone());
+    bannerLeft.position.set(-8, 3, -5); 
+    bannerLeft.rotation.y = Math.PI / 2;
+    scene.add(bannerLeft);
+    banners.push(bannerLeft);
 
-// Banner kanan
-const bannerRight = bannerLeft.clone();
-bannerRight.position.set(8, 3, -5); 
-bannerRight.rotation.y = -Math.PI / 2;
-scene.add(bannerRight);
+    const bannerRight = bannerLeft.clone();
+    bannerRight.position.set(8, 3, -5); 
+    bannerRight.rotation.y = -Math.PI / 2;
+    scene.add(bannerRight);
+    banners.push(bannerRight);
 
-// Banner belakang
-const bannerBack = bannerLeft.clone();
-bannerBack.position.set(0, 3, 10); 
-bannerBack.rotation.y = Math.PI;
-scene.add(bannerBack);
+    const bannerBack = bannerLeft.clone();
+    bannerBack.position.set(0, 3, 10); 
+    bannerBack.rotation.y = Math.PI;
+    scene.add(bannerBack);
+    banners.push(bannerBack);
 
+    // Banner kecil
+    for (let i = 0; i < 4; i++) {
+      const smallBannerGeo = new THREE.PlaneGeometry(2, 1);
 
-// Tambah banyak banner kecil di dinding kiri dan kanan
-for (let i = 0; i < 4; i++) {
-  const smallBannerGeo = new THREE.PlaneGeometry(2, 1);
-  const smallBannerMat = new THREE.MeshBasicMaterial({ map: bannerTexture, side: THREE.DoubleSide });
+      const smallBannerLeft = new THREE.Mesh(
+        smallBannerGeo,
+        bannerMaterial.clone()
+      );
+      smallBannerLeft.position.set(-10, 1.5 + i * 1.5, -2); 
+      smallBannerLeft.rotation.y = Math.PI / 2;
+      scene.add(smallBannerLeft);
+      banners.push(smallBannerLeft);
 
-  // kiri
-  const smallBannerLeft = new THREE.Mesh(smallBannerGeo, smallBannerMat);
-  smallBannerLeft.position.set(-10, 1.5 + i * 1.5, -2); 
-  smallBannerLeft.rotation.y = Math.PI / 2;
-  scene.add(smallBannerLeft);
+      const smallBannerRight = new THREE.Mesh(
+        smallBannerGeo,
+        bannerMaterial.clone()
+      );
+      smallBannerRight.position.set(10, 1.5 + i * 1.5, -2);
+      smallBannerRight.rotation.y = -Math.PI / 2;
+      scene.add(smallBannerRight);
+      banners.push(smallBannerRight);
+    }
 
-  // kanan
-  const smallBannerRight = smallBannerLeft.clone();
-  smallBannerRight.position.set(10, 1.5 + i * 1.5, -2);
-  smallBannerRight.rotation.y = -Math.PI / 2;
-  scene.add(smallBannerRight);
-}
+    // Fungsi transisi
+    function changeBanner() {
+      // Fade out
+      let opacity = 1;
+      const fadeOut = setInterval(() => {
+        opacity -= 0.05;
+        banners.forEach(banner => {
+          banner.material.opacity = Math.max(0, opacity);
+        });
 
+        if (opacity <= 0) {
+          clearInterval(fadeOut);
 
+          // Ganti gambar
+          currentBannerIndex = (currentBannerIndex + 1) % bannerImages.length;
+          const newTexture = textureLoader.load(bannerImages[currentBannerIndex]);
+          banners.forEach(banner => {
+            banner.material.map = newTexture;
+            banner.material.needsUpdate = true;
+          });
 
+          // Fade in
+          let opacityIn = 0;
+          const fadeIn = setInterval(() => {
+            opacityIn += 0.05;
+            banners.forEach(banner => {
+              banner.material.opacity = Math.min(1, opacityIn);
+            });
+            if (opacityIn >= 1) {
+              clearInterval(fadeIn);
+            }
+          }, 50);
+        }
+      }, 50);
+    }
 
-
+    // Slideshow tiap 5 detik
+    setInterval(changeBanner, 5000);
 
   </script>
 </body>
 </html>
-
-
