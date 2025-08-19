@@ -77,17 +77,21 @@ scene.add(frame);
 // Setelah metadata siap, update ukuran sesuai rasio asli video
 video.addEventListener("loadedmetadata", () => {
   const aspect = video.videoWidth / video.videoHeight;
-  screenH = screenW / aspect;
+  
+  screenH = screenW * (1 / aspect); // sama dengan screenW * (video.videoHeight / video.videoWidth)
 
+  // update layar
   screen.geometry.dispose();
   screen.geometry = new THREE.PlaneGeometry(screenW, screenH);
   screen.position.set(0, 5 + screenH/2, -11.8);
 
+  // update frame
   frame.geometry.dispose();
   frame.geometry = new THREE.PlaneGeometry(screenW+0.3, screenH+0.3);
   frame.position.copy(screen.position);
   frame.position.z -= 0.01;
 });
+
 
 
     
@@ -269,6 +273,7 @@ video.addEventListener("loadedmetadata", () => {
   </script>
 </body>
 </html>
+
 
 
 
